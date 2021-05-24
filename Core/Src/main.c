@@ -58,6 +58,16 @@ uint16_t PWMOut = 3000;
 
 uint64_t _micro = 0;
 uint64_t TimeOutputLoop = 0;
+
+//For Control
+//int voltageControl = 0;
+//int summationError = 0;
+//int previousError = 0;
+int referentVoltage = 4096/3300; //1 V
+int voltageControl,summationError,previousError = 0; // u,s,p
+int P=0,I=0,D=0;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -146,6 +156,7 @@ int main(void)
 			//#002
 		}
 
+		control_interrupt();
 	}
   /* USER CODE END 3 */
 }
@@ -291,7 +302,7 @@ static void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 5000;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -463,10 +474,29 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-//A
+//Coltrol Voltage with PID type Positional Algorithm
+void control_interrupt()
+{
+	//static sensor.read();
+	static int error = 0;
+	error = referentVoltage - ADCFeedBack;
+	summationError = summationError + error;
+	voltageControl = (P*error)+(I*summationError)+(D*(error-previousError));
+	//motor.drive(voltageControl)
+	//calculate output compare for change PWMOut
+
+	//Counter Period = 10000
+//	PWMOut = (voltageControl/referentVoltage)*10000;
+	PWMOut = PWMOut + voltageControl;
+
+	previousError = error;
+}
+
+//ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	ADCFeedBack = (3300.0*HAL_ADC_GetValue(&hadc1))/4096.0;
+//	ADCFeedBack = (3300.0*HAL_ADC_GetValue(&hadc1))/4096.0; //mV
+	ADCFeedBack = HAL_ADC_GetValue(&hadc1); //mV
 	ADCUpdateFlag = 1;
 }
 
