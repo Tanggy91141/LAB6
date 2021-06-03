@@ -52,7 +52,8 @@ UART_HandleTypeDef huart2;
 
 uint8_t ADCUpdateFlag = 0;
 //Store ADC Value
-uint16_t ADCFeedBack = 0;
+float ADCFeedBack = 0;
+//uint16_t ADCFeedBack = 0;
 
 uint16_t PWMOut = 3000;
 
@@ -63,10 +64,10 @@ uint64_t TimeOutputLoop = 0;
 //int voltageControl = 0;
 //int summationError = 0;
 //int previousError = 0;
-int referentVoltage = 4096/3300; //1 V
-int voltageControl,summationError,previousError = 0; // u,s,p
-int P=0,I=0,D=0;
-
+//float referentVoltage = 40960/33 ;// (4096/3300)1000 for 1000 mV in ADC.read() unit
+float referentVoltage = 4095/3.3; //1Voltage
+float voltageControl,summationError,previousError = 0; // u,s,p
+float P=1,I=0,D=0;
 
 /* USER CODE END PV */
 
@@ -144,8 +145,8 @@ int main(void)
 		if (micros() - TimeOutputLoop >= 1000)//uS
 		{
 			TimeOutputLoop = micros();
+			control_interrupt();
 			// #001
-
 			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, PWMOut);
 
 		}
@@ -156,7 +157,7 @@ int main(void)
 			//#002
 		}
 
-		control_interrupt();
+
 	}
   /* USER CODE END 3 */
 }
@@ -478,7 +479,7 @@ static void MX_GPIO_Init(void)
 void control_interrupt()
 {
 	//static sensor.read();
-	static int error = 0;
+	static float error = 0;
 	error = referentVoltage - ADCFeedBack;
 	summationError = summationError + error;
 	voltageControl = (P*error)+(I*summationError)+(D*(error-previousError));
@@ -486,7 +487,7 @@ void control_interrupt()
 	//calculate output compare for change PWMOut
 
 	//Counter Period = 10000
-//	PWMOut = (voltageControl/referentVoltage)*10000;
+	//PWMOut = (voltageControl/referentVoltage)*10000;
 	PWMOut = PWMOut + voltageControl;
 
 	previousError = error;
@@ -495,8 +496,8 @@ void control_interrupt()
 //ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-//	ADCFeedBack = (3300.0*HAL_ADC_GetValue(&hadc1))/4096.0; //mV
-	ADCFeedBack = HAL_ADC_GetValue(&hadc1); //mV
+//	ADCFeedBack = (3.3*HAL_ADC_GetValue(&hadc1))/4096.0; //mV
+	ADCFeedBack = HAL_ADC_GetValue(&hadc1);
 	ADCUpdateFlag = 1;
 }
 
